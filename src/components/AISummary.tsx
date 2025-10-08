@@ -15,26 +15,31 @@ export const AISummary = ({ bookDescription }: AISummaryProps) => {
 
   const generateSummary = async () => {
     if (!bookDescription) return;
-    
+
     setIsLoading(true);
+    setHasGenerated(true);
+
     try {
-      const response = await fetch("http://localhost:5000/summary", {
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/generate-summary`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ text: bookDescription }),
+        body: JSON.stringify({ description: bookDescription }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setSummary(data.summary || "Unable to generate summary.");
-        setHasGenerated(true);
-      } else {
-        setSummary("Failed to generate summary. Please try again.");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to generate summary");
       }
+
+      const data = await response.json();
+      setSummary(data.summary || "Unable to generate summary at this time.");
     } catch (error) {
-      setSummary("Error connecting to the server. Please ensure the backend is running.");
+      console.error("Error generating summary:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      setSummary(`Error: ${errorMessage}. Please try again later.`);
     } finally {
       setIsLoading(false);
     }

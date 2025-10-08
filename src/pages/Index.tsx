@@ -9,7 +9,7 @@ import { Loader } from "@/components/Loader";
 import { useToast } from "@/hooks/use-toast";
 import heroImage from "@/assets/hero-library.jpg";
 
-const API_BASE_URL = "http://localhost:5000";
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
 interface BookData {
   title: string;
@@ -54,17 +54,35 @@ const Index = () => {
   const handleSearch = async (query: string) => {
     setIsLoading(true);
     setShowHero(false);
+    setBookData(null);
+    setVideos([]);
+    setPodcasts([]);
+    setAuthorData(null);
     
     try {
       // Fetch book information
-      const bookResponse = await fetch(`${API_BASE_URL}/book/${encodeURIComponent(query)}`);
+      const bookResponse = await fetch(`${SUPABASE_URL}/functions/v1/book-search`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query }),
+      });
+
       if (bookResponse.ok) {
         const book = await bookResponse.json();
         setBookData(book);
 
         // Fetch author information if available
         if (book.authors && book.authors.length > 0) {
-          const authorResponse = await fetch(`${API_BASE_URL}/author/${encodeURIComponent(book.authors[0])}`);
+          const authorResponse = await fetch(`${SUPABASE_URL}/functions/v1/author-info`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ author: book.authors[0] }),
+          });
+          
           if (authorResponse.ok) {
             const author = await authorResponse.json();
             setAuthorData(author);
@@ -79,22 +97,37 @@ const Index = () => {
       }
 
       // Fetch videos
-      const videosResponse = await fetch(`${API_BASE_URL}/videos/${encodeURIComponent(query)}`);
+      const videosResponse = await fetch(`${SUPABASE_URL}/functions/v1/search-videos`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query }),
+      });
+      
       if (videosResponse.ok) {
         const videosData = await videosResponse.json();
         setVideos(videosData);
       }
 
       // Fetch podcasts
-      const podcastsResponse = await fetch(`${API_BASE_URL}/podcasts/${encodeURIComponent(query)}`);
+      const podcastsResponse = await fetch(`${SUPABASE_URL}/functions/v1/search-podcasts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query }),
+      });
+      
       if (podcastsResponse.ok) {
         const podcastsData = await podcastsResponse.json();
         setPodcasts(podcastsData);
       }
     } catch (error) {
+      console.error('Search error:', error);
       toast({
         title: "Connection Error",
-        description: "Unable to connect to the server. Please ensure the backend is running on port 5000.",
+        description: "Unable to fetch data. Please try again.",
         variant: "destructive",
       });
     } finally {
